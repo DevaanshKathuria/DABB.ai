@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -93,6 +94,27 @@ if uploaded_file is not None:
 
     styled = filtered_df.style.apply(_style_row, axis=1)
     st.markdown(styled.to_html(index=False), unsafe_allow_html=True)
+
+    st.subheader("Export Results")
+    export_col1, export_col2 = st.columns(2)
+    with export_col1:
+        csv_bytes = filtered_df.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            "Download CSV",
+            data=csv_bytes,
+            file_name="contract_risk_results.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+    with export_col2:
+        json_bytes = json.dumps(filtered_df.to_dict(orient="records"), indent=2).encode("utf-8")
+        st.download_button(
+            "Download JSON",
+            data=json_bytes,
+            file_name="contract_risk_results.json",
+            mime="application/json",
+            use_container_width=True,
+        )
 
     st.subheader("Highlighted Clauses")
     risky_df = filtered_df[filtered_df["severity"].isin(["High", "Medium"])].copy()
