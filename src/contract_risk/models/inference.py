@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Sequence
 
 from contract_risk.config import ProjectConfig
 from contract_risk.data.loader import load_training_dataframe
@@ -22,3 +23,13 @@ def load_or_train_model(model_path: str | Path | None = None) -> object:
     model = train_logreg_model(dataset["text"].tolist(), dataset["label"].tolist())
     save_model(model, resolved_model_path)
     return model
+
+
+def predict_clauses(model: object, clauses: Sequence[str], batch_size: int = 256) -> list[str]:
+    """Predict clause types in batches to support long documents."""
+    predictions: list[str] = []
+    for start in range(0, len(clauses), batch_size):
+        batch = list(clauses[start : start + batch_size])
+        batch_preds = model.predict(batch)
+        predictions.extend(str(item) for item in batch_preds)
+    return predictions

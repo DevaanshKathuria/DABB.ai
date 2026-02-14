@@ -16,7 +16,7 @@ if str(SRC_PATH) not in sys.path:
 
 from contract_risk.data.ingestion import UnsupportedFileTypeError, extract_text_from_upload
 from contract_risk.features.segmentation import segment_clauses
-from contract_risk.models.inference import load_or_train_model
+from contract_risk.models.inference import load_or_train_model, predict_clauses
 from contract_risk.risk.mapping import map_clause_type_to_risk, risk_badge_color
 
 st.set_page_config(page_title="DABB.ai Contract Risk Analyzer", layout="wide")
@@ -24,6 +24,15 @@ st.title("DABB.ai - Intelligent Contract Risk Analysis")
 st.caption("Milestone 1: Classical NLP + ML (TF-IDF + Logistic Regression)")
 
 uploaded_file = st.file_uploader("Upload contract", type=["txt", "pdf"])
+
+MAX_INPUT_CHARS = 500_000
+MAX_CLAUSES = 1500
+
+
+@st.cache_resource(show_spinner=False)
+def get_cached_model() -> object:
+    """Load the trained model once per session."""
+    return load_or_train_model()
 
 if uploaded_file is not None:
     try:
@@ -36,13 +45,27 @@ if uploaded_file is not None:
         st.warning("No text could be extracted from the uploaded document.")
         st.stop()
 
+    if len(raw_text) > MAX_INPUT_CHARS:
+        st.warning(
+            f"Document is large ({len(raw_text):,} chars). "
+            f"Only the first {MAX_INPUT_CHARS:,} chars are analyzed for responsiveness."
+        )
+        raw_text = raw_text[:MAX_INPUT_CHARS]
+
     clauses = segment_clauses(raw_text)
     if not clauses:
         st.warning("Could not segment clauses from the document.")
         st.stop()
 
-    model = load_or_train_model()
-    predicted_types = model.predict(clauses)
+    if len(clauses) > MAX_CLAUSES:
+        st.warning(
+            f"Detected {len(clauses):,} clauses. "
+            f"Only first {MAX_CLAUSES:,} clauses are analyzed to avoid timeout."
+        )
+        clauses = clauses[:MAX_CLAUSES]
+
+    model = get_cached_model()
+    predicted_types = predict_clauses(model, clauses, batch_size=256)
 
     rows: list[dict[str, str | int]] = []
     for i, (clause_text, clause_type) in enumerate(zip(clauses, predicted_types), start=1):
