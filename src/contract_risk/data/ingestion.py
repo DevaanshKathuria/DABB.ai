@@ -13,6 +13,10 @@ class UnsupportedFileTypeError(ValueError):
     """Raised when an unsupported file extension is supplied."""
 
 
+class DocumentReadError(ValueError):
+    """Raised when text extraction fails for a supported document."""
+
+
 def extract_text_from_txt(path: str | Path, encoding: str = "utf-8") -> str:
     """Extract text from a UTF-8 text file."""
     return Path(path).read_text(encoding=encoding).strip()
@@ -20,9 +24,12 @@ def extract_text_from_txt(path: str | Path, encoding: str = "utf-8") -> str:
 
 def extract_text_from_pdf(file_obj: BinaryIO) -> str:
     """Extract text from a PDF file-like object."""
-    reader = PdfReader(file_obj)
-    pages = [(page.extract_text() or "").strip() for page in reader.pages]
-    return "\n\n".join(page for page in pages if page).strip()
+    try:
+        reader = PdfReader(file_obj)
+        pages = [(page.extract_text() or "").strip() for page in reader.pages]
+        return "\n\n".join(page for page in pages if page).strip()
+    except Exception as exc:  # pragma: no cover - parser-specific error paths
+        raise DocumentReadError("Failed to read PDF. File may be corrupted or encrypted.") from exc
 
 
 def extract_text_from_path(path: str | Path) -> str:
@@ -43,8 +50,14 @@ def extract_text_from_upload(file_name: str, payload: bytes) -> str:
     """Extract text from uploaded bytes based on file name extension."""
     suffix = Path(file_name).suffix.lower()
 
+    if not payload:
+        raise DocumentReadError("Uploaded file is empty.")
+
     if suffix == ".txt":
-        return payload.decode("utf-8", errors="ignore").strip()
+        text = payload.decode("utf-8", errors="ignore").strip()
+        if not text:
+            raise DocumentReadError("No readable text found in TXT file.")
+        return text
     if suffix == ".pdf":
         return extract_text_from_pdf(BytesIO(payload))
 

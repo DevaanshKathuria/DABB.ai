@@ -14,7 +14,11 @@ SRC_PATH = ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from contract_risk.data.ingestion import UnsupportedFileTypeError, extract_text_from_upload
+from contract_risk.data.ingestion import (
+    DocumentReadError,
+    UnsupportedFileTypeError,
+    extract_text_from_upload,
+)
 from contract_risk.features.segmentation import segment_clauses
 from contract_risk.models.inference import load_or_train_model, predict_clauses
 from contract_risk.risk.mapping import map_clause_type_to_risk, risk_badge_color
@@ -39,6 +43,12 @@ if uploaded_file is not None:
         raw_text = extract_text_from_upload(uploaded_file.name, uploaded_file.getvalue())
     except UnsupportedFileTypeError as exc:
         st.error(str(exc))
+        st.stop()
+    except DocumentReadError as exc:
+        st.error(str(exc))
+        st.stop()
+    except Exception:
+        st.error("Unexpected error while parsing the document.")
         st.stop()
 
     if not raw_text.strip():
