@@ -28,6 +28,7 @@ st.title("DABB.ai - Intelligent Contract Risk Analysis")
 st.caption("Milestone 1: Classical NLP + ML (TF-IDF + Logistic Regression)")
 
 uploaded_file = st.file_uploader("Upload contract", type=["txt", "pdf"])
+use_demo_mode = st.checkbox("Use bundled demo contract", value=uploaded_file is None)
 
 MAX_INPUT_CHARS = 500_000
 MAX_CLAUSES = 1500
@@ -38,14 +39,20 @@ def get_cached_model() -> object:
     """Load the trained model once per session."""
     return load_or_train_model()
 
-if uploaded_file is not None:
+if uploaded_file is not None or use_demo_mode:
     try:
-        raw_text = extract_text_from_upload(uploaded_file.name, uploaded_file.getvalue())
+        if uploaded_file is not None:
+            raw_text = extract_text_from_upload(uploaded_file.name, uploaded_file.getvalue())
+        else:
+            raw_text = (ROOT / "data" / "demo" / "demo_contract.txt").read_text(encoding="utf-8")
     except UnsupportedFileTypeError as exc:
         st.error(str(exc))
         st.stop()
     except DocumentReadError as exc:
         st.error(str(exc))
+        st.stop()
+    except FileNotFoundError:
+        st.error("Demo contract file is missing.")
         st.stop()
     except Exception:
         st.error("Unexpected error while parsing the document.")
@@ -168,4 +175,4 @@ if uploaded_file is not None:
                 unsafe_allow_html=True,
             )
 else:
-    st.info("Upload a `.txt` or `.pdf` contract to begin.")
+    st.info("Upload a `.txt` or `.pdf` contract, or enable demo mode to begin.")

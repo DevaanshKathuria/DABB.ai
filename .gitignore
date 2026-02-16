@@ -28,6 +28,7 @@ reports/*.png
 reports/*.csv
 reports/*.joblib
 models/*.joblib
+!models/model.joblib
 
 # OS/editor
 .DS_Store
