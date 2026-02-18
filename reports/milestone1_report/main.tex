@@ -1,0 +1,126 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usepackage{float}
+\title{Project 7 (Milestone 1): Intelligent Contract Risk Analysis\\\large Team DABB.ai}
+\author{Birajit Saikia \and Devaansh Kathuria \and Abhey Dua \and Bhavya Jain}
+\date{February 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This report presents Milestone 1 of Project 7, focused on classical NLP and machine learning for clause-level contract risk analysis. The system extracts text from PDF/TXT files, segments clauses, classifies clause type using TF-IDF and supervised models, maps clause classes to risk severity, and displays flagged clauses in a public-hostable Streamlit interface. No generative AI or LLM components are used in this milestone.
+\end{abstract}
+
+\section{Introduction}
+Contract review is time-consuming and error-prone when handled manually at scale. The objective of this milestone is to build a practical baseline that identifies potentially risky clauses in legal documents using traditional machine learning methods. The design prioritizes transparent features, reproducible training, and lightweight deployment on free hosting tiers.
+
+\section{Problem Definition and I/O Specification}
+\textbf{Input:}
+\begin{itemize}
+    \item Contract documents in PDF or TXT format
+    \item Optional labeled CSV for supervised training
+\end{itemize}
+
+\textbf{Output (per clause):}
+\begin{itemize}
+    \item Predicted clause type
+    \item Risk severity (Low/Medium/High)
+    \item Risk score (0--100)
+\end{itemize}
+
+\textbf{Disclaimer:} The output is informational only and not legal advice.
+
+\section{Methodology}
+\subsection{Pipeline Overview}
+Figure~\ref{fig:pipeline} summarizes the Milestone 1 architecture.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=1.1cm, every node/.style={draw, rounded corners, align=center, font=\small}]
+\node (a) {Upload\\(PDF/TXT)};
+\node (b) [below=of a] {Text Extraction};
+\node (c) [below=of b] {Preprocessing +\\Clause Segmentation};
+\node (d) [below=of c] {TF-IDF Features};
+\node (e) [below=of d] {Classifier\\(LogReg / LinearSVC / Tree)};
+\node (f) [below=of e] {Risk Mapping\\Severity + Score};
+\node (g) [below=of f] {Streamlit UI + Export};
+\draw[->] (a) -- (b);
+\draw[->] (b) -- (c);
+\draw[->] (c) -- (d);
+\draw[->] (d) -- (e);
+\draw[->] (e) -- (f);
+\draw[->] (f) -- (g);
+\end{tikzpicture}
+\caption{Milestone 1 NLP pipeline for contract risk analysis.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Data Handling}
+The loader supports flexible schema matching for real-world dataset variation. For text columns, accepted names are \texttt{text}, \texttt{clause}, \texttt{sentence}, and \texttt{content}. For labels, accepted names are \texttt{label}, \texttt{category}, \texttt{clause\_type}, and \texttt{type}. The first match from each group is selected.
+
+\subsection{Preprocessing and Segmentation}
+The text processing stage normalizes whitespace and segments clauses using legal numbering patterns, including numeric headings and lettered bullets. Tiny fragments are merged, and sentence-level fallback chunking is used when structural markers are absent.
+
+\subsection{Feature Extraction and Models}
+TF-IDF vectors with uni/bi-grams are fed into supervised classifiers. Logistic Regression is the primary model, while LinearSVC and Decision Tree are used as baselines for comparison.
+
+\subsection{Evaluation Metrics}
+We report weighted precision, recall, and F1 score:
+\begin{equation}
+F1 = 2 \cdot \frac{Precision \cdot Recall}{Precision + Recall}
+\end{equation}
+A confusion matrix is generated and stored in the \texttt{reports/} directory.
+
+\section{Results and Discussion}
+\subsection{Model Comparison Template}
+\begin{table}[H]
+\centering
+\begin{tabular}{lccc}
+\toprule
+Model & Precision (weighted) & Recall (weighted) & F1 (weighted) \\
+\midrule
+Logistic Regression & 0.XX & 0.XX & 0.XX \\
+LinearSVC & 0.XX & 0.XX & 0.XX \\
+Decision Tree & 0.XX & 0.XX & 0.XX \\
+\bottomrule
+\end{tabular}
+\caption{Baseline model comparison for clause classification.}
+\label{tab:comparison}
+\end{table}
+
+\subsection{Confusion Matrix Placeholder}
+\begin{figure}[H]
+\centering
+\fbox{\parbox[c][5cm][c]{0.85\linewidth}{\centering Place generated confusion matrix image here\\(e.g., \texttt{reports/logreg\_confusion\_matrix.png}).}}
+\caption{Confusion matrix for the selected classifier.}
+\label{fig:cm}
+\end{figure}
+
+\subsection{Risk Mapping}
+Predicted clause types are mapped to risk severity and numeric scores using a deterministic rule table. Example: \textit{Indemnity} and \textit{Liability} map to high severity, while \textit{Confidentiality} maps to low severity.
+
+\section{System UI and Deployment}
+The Streamlit interface supports:
+\begin{itemize}
+    \item Uploading PDF/TXT contracts
+    \item Viewing clause-wise predictions with severity and risk score
+    \item Highlighting risky clauses for quick inspection
+    \item Filtering by severity and clause type
+    \item Exporting results as CSV/JSON
+\end{itemize}
+
+The application is designed for deployment on Hugging Face Spaces (Streamlit SDK).
+
+\section{Conclusion}
+Milestone 1 demonstrates a complete, non-GenAI legal clause risk analysis pipeline that is modular, testable, and publicly deployable. The system provides an effective baseline for contract risk screening and establishes a foundation for future extensions in Milestone 2.
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
