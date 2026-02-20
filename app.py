@@ -20,12 +20,14 @@ from contract_risk.data.ingestion import (
     extract_text_from_upload,
 )
 from contract_risk.features.segmentation import segment_clauses
+from contract_risk.models.explainability import ExplainabilityError, top_features_by_class
 from contract_risk.models.inference import load_or_train_model, predict_clauses
 from contract_risk.risk.mapping import map_clause_type_to_risk, risk_badge_color
 
 st.set_page_config(page_title="DABB.ai Contract Risk Analyzer", layout="wide")
 st.title("DABB.ai - Intelligent Contract Risk Analysis")
 st.caption("Milestone 1: Classical NLP + ML (TF-IDF + Logistic Regression)")
+st.warning("Informational only, not legal advice.")
 
 uploaded_file = st.file_uploader("Upload contract", type=["txt", "pdf"])
 use_demo_mode = st.checkbox("Use bundled demo contract", value=uploaded_file is None)
@@ -174,5 +176,12 @@ if uploaded_file is not None or use_demo_mode:
                 """,
                 unsafe_allow_html=True,
             )
+
+    with st.expander("Model Explainability: Top Features by Class", expanded=False):
+        try:
+            features_df = top_features_by_class(model, top_n=8)
+            st.dataframe(features_df, use_container_width=True)
+        except ExplainabilityError as exc:
+            st.info(f"Explainability unavailable: {exc}")
 else:
     st.info("Upload a `.txt` or `.pdf` contract, or enable demo mode to begin.")

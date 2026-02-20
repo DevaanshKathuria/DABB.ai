@@ -1,8 +1,8 @@
-streamlit
-pandas
-scikit-learn
-joblib
-pypdf
-matplotlib
-seaborn
-pytest
+streamlit==1.54.0
+pandas==2.3.3
+scikit-learn==1.8.0
+joblib==1.5.3
+pypdf==6.7.2
+matplotlib==3.10.8
+seaborn==0.13.2
+pytest==9.0.2
