@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "id": "contract-basics",
+      "title": "Contract basics",
+      "source_name": "Cornell LII Wex",
+      "source_url": "https://www.law.cornell.edu/wex/contract",
+      "jurisdiction": "US",
+      "topic": "enforceability",
+      "clause_tags": ["offer and acceptance", "consideration", "capacity", "legality"],
+      "passage": "An enforceable contract generally requires mutual assent, consideration, capacity, and a lawful purpose. Missing any of these elements can weaken enforceability and increase dispute risk.",
+      "risk_signal": "Missing core contract elements can create enforceability risk."
+    },
+    {
+      "id": "consideration",
+      "title": "Consideration",
+      "source_name": "Cornell LII Wex",
+      "source_url": "https://www.law.cornell.edu/wex/consideration",
+      "jurisdiction": "US",
+      "topic": "consideration",
+      "clause_tags": ["payment", "exchange of value", "binding promise"],
+      "passage": "A valid contract usually requires something of value to be exchanged by both sides. A one-sided promise with no real exchange can be harder to enforce.",
+      "risk_signal": "One-sided promises or missing value exchange can weaken the clause."
+    },
+    {
+      "id": "force-majeure",
+      "title": "Force majeure",
+      "source_name": "Cornell LII Wex",
+      "source_url": "https://www.law.cornell.edu/index.php/wex/force_majeure",
+      "jurisdiction": "US",
+      "topic": "force majeure",
+      "clause_tags": ["force majeure", "acts of god", "business interruption", "excuse of performance"],
+      "passage": "Force majeure clauses work best when they list the triggering events clearly and tie them to real impossibility or prevention of performance. Broad or vague language can make the clause harder to apply.",
+      "risk_signal": "Vague force majeure language can leave the parties exposed during disruption."
+    },
+    {
+      "id": "arbitration",
+      "title": "Arbitration",
+      "source_name": "Cornell LII Wex",
+      "source_url": "https://www.law.cornell.edu/index.php/wex/arbitration",
+      "jurisdiction": "US",
+      "topic": "dispute resolution",
+      "clause_tags": ["arbitration", "forum selection", "dispute resolution", "binding process"],
+      "passage": "Arbitration clauses can require future disputes to be resolved outside court. Because arbitration is binding in many cases, the clause should be clear about scope, procedure, and the forum chosen.",
+      "risk_signal": "Unclear arbitration wording can create major dispute-resolution risk."
+    },
+    {
+      "id": "termination-convenience",
+      "title": "Termination for convenience",
+      "source_name": "Cornell LII e-CFR",
+      "source_url": "https://www.law.cornell.edu/cfr/text/48/52.249-5",
+      "jurisdiction": "US",
+      "topic": "termination",
+      "clause_tags": ["termination", "notice", "effective date", "transition"],
+      "passage": "Termination clauses should specify who can terminate, when termination takes effect, and what transition duties remain. Notice mechanics and post-termination obligations matter for risk allocation.",
+      "risk_signal": "Incomplete termination terms can leave performance and transition duties unclear."
+    },
+    {
+      "id": "government-contracts",
+      "title": "Government contract clauses",
+      "source_name": "Cornell LII Wex",
+      "source_url": "https://www.law.cornell.edu/wex/government_contracts",
+      "jurisdiction": "US",
+      "topic": "government contracts",
+      "clause_tags": ["mandatory clauses", "changes clause", "default", "termination"],
+      "passage": "Government contracts often include mandatory clauses that let the government change terms or terminate in specific situations. Those clauses can materially shift risk and should be checked early.",
+      "risk_signal": "Mandatory government clauses can materially alter contract risk."
+    },
+    {
+      "id": "liability-insurance",
+      "title": "Liability and insurance",
+      "source_name": "Cornell LII Wex",
+      "source_url": "https://www.law.cornell.edu/wex/insurance",
+      "jurisdiction": "US",
+      "topic": "liability",
+      "clause_tags": ["liability", "insurance", "indemnity", "risk allocation"],
+      "passage": "Liability and insurance language should explain what risks are covered, what exclusions apply, and how losses are allocated. Caps, carve-outs, and proof-of-insurance requirements affect practical exposure.",
+      "risk_signal": "Unbounded liability or unclear insurance coverage increases exposure."
+    },
+    {
+      "id": "consumer-dispute",
+      "title": "Dispute escalation and consumer resolution",
+      "source_name": "USAGov",
+      "source_url": "https://www.usa.gov/company-product-service-complaints",
+      "jurisdiction": "US",
+      "topic": "dispute resolution",
+      "clause_tags": ["complaints", "mediation", "arbitration", "escalation"],
+      "passage": "When contract issues arise, escalation paths such as customer service, mediation, or arbitration can reduce friction. A contract should make the dispute path explicit instead of leaving it ambiguous.",
+      "risk_signal": "Unclear escalation paths can make disputes slower and more expensive."
+    }
+  ]
+}
