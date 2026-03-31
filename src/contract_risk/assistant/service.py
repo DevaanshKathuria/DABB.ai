@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from collections import Counter
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from contract_risk.assistant.corpus import load_legal_guidance_corpus
+from contract_risk.assistant.reporting import build_structured_report
 from contract_risk.assistant.retrieval import (
     DEFAULT_KB_PATH,
     LegalKnowledgeBase,
@@ -25,11 +24,6 @@ from contract_risk.assistant.state import (
 )
 from contract_risk.assistant.workflow import build_summary, complete_workflow, create_agent_state, mark_fallback, mark_mitigation
 from contract_risk.risk.mapping import map_clause_type_to_risk
-
-LEGAL_DISCLAIMER = (
-    "This report is informational only and is not legal advice. "
-    "A qualified lawyer should review all contract decisions."
-)
 
 MITIGATION_GUIDANCE: dict[str, str] = {
     "termination": "Clarify notice periods, cure rights, transition duties, and survival obligations.",
@@ -132,50 +126,6 @@ def _build_finding(
     )
 
 
-def _report_sections(state: AgentState) -> dict[str, Any]:
-    """Serialize the assistant state into a report payload."""
-    assert state.summary is not None
-
-    severity_totals = Counter(pred.severity for pred in state.clause_predictions)
-    findings = [asdict(finding) for finding in state.findings]
-
-    sources = []
-    seen_sources: set[str] = set()
-    for finding in state.findings:
-        for evidence in finding.evidence:
-            if evidence.source_id in seen_sources:
-                continue
-            seen_sources.add(evidence.source_id)
-            sources.append(
-                {
-                    "source_id": evidence.source_id,
-                    "title": evidence.source_title,
-                    "url": evidence.source_url,
-                }
-            )
-
-    mitigation_actions = [finding.mitigation_action for finding in state.findings]
-    unique_actions = list(dict.fromkeys(mitigation_actions))
-
-    return {
-        "contract_summary": asdict(state.summary),
-        "risk_severity_assessment": {
-            "high": severity_totals.get("High", 0),
-            "medium": severity_totals.get("Medium", 0),
-            "low": severity_totals.get("Low", 0),
-        },
-        "identified_risks": findings,
-        "recommended_mitigation_actions": unique_actions,
-        "legal_and_ethical_disclaimer": LEGAL_DISCLAIMER,
-        "fallback": {
-            "used": state.fallback_reason is not None,
-            "reason": state.fallback_reason,
-            "errors": list(state.errors),
-        },
-        "sources_consulted": sources,
-    }
-
-
 def generate_legal_assistance_report(
     contract_text: str,
     clause_predictions: Sequence[ClausePrediction | Mapping[str, Any]],
@@ -192,7 +142,7 @@ def generate_legal_assistance_report(
         mark_fallback(state, "Contract text or clause predictions were missing.")
         build_summary(state, contract_name=contract_name)
         complete_workflow(state)
-        return _report_sections(state)
+        return build_structured_report(state)
 
     kb = knowledge_base or _load_or_build_knowledge_base()
     if not kb.records:
@@ -211,4 +161,4 @@ def generate_legal_assistance_report(
 
     mark_mitigation(state)
     complete_workflow(state)
-    return _report_sections(state)
+    return build_structured_report(state)

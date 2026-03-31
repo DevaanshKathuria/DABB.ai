@@ -2,6 +2,13 @@
 
 from contract_risk.assistant.corpus import LegalGuidanceRecord, load_legal_guidance_corpus
 from contract_risk.assistant.preprocessing import RetrievalChunk, build_retrieval_chunks
+from contract_risk.assistant.reporting import (
+    LEGAL_DISCLAIMER,
+    REPORT_VERSION,
+    build_clause_references,
+    build_severity_assessment,
+    build_structured_report,
+)
 from contract_risk.assistant.retrieval import (
     LegalKnowledgeBase,
     RetrievalHit,
@@ -30,15 +37,20 @@ __all__ = [
     "RiskFinding",
     "WorkflowStage",
     "build_knowledge_base",
+    "build_clause_references",
     "build_retrieval_query",
     "build_retrieval_chunks",
+    "build_severity_assessment",
+    "build_structured_report",
     "build_summary",
     "complete_workflow",
     "create_agent_state",
+    "LEGAL_DISCLAIMER",
     "generate_legal_assistance_report",
     "load_legal_guidance_corpus",
     "retrieve_best_practices",
     "retrieve_clause_guidance",
     "retrieve_contract_guidance",
+    "REPORT_VERSION",
     "select_top_hits",
 ]
