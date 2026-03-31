@@ -34,6 +34,7 @@ def test_generate_report_returns_structured_sections() -> None:
     assert report["severity_assessment"]["high_risk_count"] == 1
     assert len(report["identified_risks"]) == 2
     assert len(report["clause_references"]) == 2
+    assert len(report["clause_explanations"]) == 2
     assert report["mitigation_actions"]
     assert report["disclaimer"]
     assert report["sources_consulted"]
@@ -60,6 +61,9 @@ def test_generate_report_clauses_remain_easy_to_render() -> None:
     assert clause_reference["clause_id"] == "C010"
     assert clause_reference["evidence_count"] >= 1
     assert "clause_text" in clause_reference
+    clause_explanation = report["clause_explanations"][0]
+    assert clause_explanation["clause_reference"] == "C010 (termination)"
+    assert clause_explanation["source_titles"]
 
 
 def test_generate_report_uses_fallback_for_empty_input() -> None:

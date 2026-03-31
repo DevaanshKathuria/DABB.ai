@@ -1,10 +1,12 @@
 """Agentic legal assistance helpers for Milestone 2."""
 
 from contract_risk.assistant.corpus import LegalGuidanceRecord, load_legal_guidance_corpus
+from contract_risk.assistant.explanations import ClauseExplanation, build_clause_explanation
 from contract_risk.assistant.preprocessing import RetrievalChunk, build_retrieval_chunks
 from contract_risk.assistant.reporting import (
     LEGAL_DISCLAIMER,
     REPORT_VERSION,
+    build_clause_explanations,
     build_clause_references,
     build_severity_assessment,
     build_structured_report,
@@ -27,6 +29,7 @@ from contract_risk.assistant.workflow import build_summary, complete_workflow, c
 __all__ = [
     "AgentState",
     "ClausePrediction",
+    "ClauseExplanation",
     "ContractSummary",
     "EvidenceItem",
     "LegalGuidanceRecord",
@@ -38,10 +41,12 @@ __all__ = [
     "WorkflowStage",
     "build_knowledge_base",
     "build_clause_references",
+    "build_clause_explanations",
     "build_retrieval_query",
     "build_retrieval_chunks",
     "build_severity_assessment",
     "build_structured_report",
+    "build_clause_explanation",
     "build_summary",
     "complete_workflow",
     "create_agent_state",

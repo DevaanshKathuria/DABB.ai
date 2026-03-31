@@ -6,6 +6,7 @@ from collections import Counter
 from dataclasses import asdict
 from typing import Any
 
+from contract_risk.assistant.explanations import build_clause_explanation
 from contract_risk.assistant.state import AgentState
 
 REPORT_VERSION = "2.0"
@@ -32,6 +33,15 @@ def build_clause_references(state: AgentState) -> list[dict[str, Any]]:
             }
         )
     return references
+
+
+def build_clause_explanations(state: AgentState) -> list[dict[str, Any]]:
+    """Create a structured explanation block for each risky clause."""
+    explanations: list[dict[str, Any]] = []
+    for finding in state.findings:
+        explanation = build_clause_explanation(finding, finding.evidence)
+        explanations.append(explanation.asdict())
+    return explanations
 
 
 def build_severity_assessment(state: AgentState) -> dict[str, Any]:
@@ -85,6 +95,7 @@ def build_structured_report(state: AgentState) -> dict[str, Any]:
         "severity_assessment": build_severity_assessment(state),
         "identified_risks": findings,
         "clause_references": build_clause_references(state),
+        "clause_explanations": build_clause_explanations(state),
         "mitigation_actions": unique_actions,
         "disclaimer": LEGAL_DISCLAIMER,
         "sources_consulted": sources,

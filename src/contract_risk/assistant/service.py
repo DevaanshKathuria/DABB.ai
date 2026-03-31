@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from contract_risk.assistant.corpus import load_legal_guidance_corpus
+from contract_risk.assistant.explanations import build_clause_explanation
 from contract_risk.assistant.reporting import build_structured_report
 from contract_risk.assistant.retrieval import (
     DEFAULT_KB_PATH,
@@ -105,14 +106,7 @@ def _build_finding(
 ) -> RiskFinding:
     """Build a structured clause-level risk finding."""
     mitigation = _build_mitigation_action(prediction)
-    explanation = (
-        f"The clause is classified as {prediction.severity.lower()} risk because it matches "
-        f"the project's rule-based mapping for {prediction.predicted_type} clauses."
-    )
-    if evidence:
-        explanation += f" Retrieval support was found in {evidence[0].source_title}."
-    else:
-        explanation += " Retrieval support was limited, so the fallback rule path was used."
+    explanation = build_clause_explanation(prediction, evidence).why_risky
 
     return RiskFinding(
         clause_id=prediction.clause_id,
