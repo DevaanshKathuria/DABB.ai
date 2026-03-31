@@ -7,6 +7,7 @@ from typing import Any, Mapping, Sequence
 
 from contract_risk.assistant.corpus import load_legal_guidance_corpus
 from contract_risk.assistant.explanations import build_clause_explanation
+from contract_risk.assistant.guardrails import MIN_EVIDENCE_SCORE, evidence_is_strong, filter_supported_evidence
 from contract_risk.assistant.reporting import build_structured_report
 from contract_risk.assistant.retrieval import (
     DEFAULT_KB_PATH,
@@ -127,6 +128,7 @@ def generate_legal_assistance_report(
     knowledge_base: LegalKnowledgeBase | None = None,
     contract_name: str = "Uploaded Contract",
     top_k: int = 3,
+    min_evidence_score: float = MIN_EVIDENCE_SCORE,
 ) -> dict[str, Any]:
     """Generate a structured draft legal risk report from clause predictions."""
     normalized_predictions = [_normalize_prediction(item) for item in clause_predictions]
@@ -148,9 +150,20 @@ def generate_legal_assistance_report(
         query = f"{prediction.predicted_type} {prediction.clause_text}".strip()
         hits = kb.search(query, top_k=top_k) if kb.records else []
         evidence = _evidence_from_hits(prediction.clause_id, hits)
-        if evidence:
-            state.evidence.extend(evidence)
-        finding = _build_finding(prediction, evidence)
+        supported_evidence = filter_supported_evidence(evidence, min_score=min_evidence_score)
+        if not evidence:
+            mark_fallback(
+                state,
+                f"No retrieval evidence was found for {prediction.clause_id}; refusing to speculate.",
+            )
+        elif not supported_evidence:
+            mark_fallback(
+                state,
+                f"Evidence for {prediction.clause_id} was below the support threshold; refusing to speculate.",
+            )
+        if evidence_is_strong(supported_evidence, min_score=min_evidence_score):
+            state.evidence.extend(supported_evidence)
+        finding = _build_finding(prediction, supported_evidence)
         state.findings.append(finding)
 
     mark_mitigation(state)

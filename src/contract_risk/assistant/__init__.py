@@ -2,6 +2,13 @@
 
 from contract_risk.assistant.corpus import LegalGuidanceRecord, load_legal_guidance_corpus
 from contract_risk.assistant.explanations import ClauseExplanation, build_clause_explanation
+from contract_risk.assistant.guardrails import (
+    MIN_EVIDENCE_SCORE,
+    STRICT_GENERATION_TEMPLATE,
+    build_generation_prompt,
+    evidence_is_strong,
+    filter_supported_evidence,
+)
 from contract_risk.assistant.preprocessing import RetrievalChunk, build_retrieval_chunks
 from contract_risk.assistant.reporting import (
     LEGAL_DISCLAIMER,
@@ -42,6 +49,7 @@ __all__ = [
     "build_knowledge_base",
     "build_clause_references",
     "build_clause_explanations",
+    "build_generation_prompt",
     "build_retrieval_query",
     "build_retrieval_chunks",
     "build_severity_assessment",
@@ -52,7 +60,11 @@ __all__ = [
     "create_agent_state",
     "LEGAL_DISCLAIMER",
     "generate_legal_assistance_report",
+    "MIN_EVIDENCE_SCORE",
+    "STRICT_GENERATION_TEMPLATE",
     "load_legal_guidance_corpus",
+    "evidence_is_strong",
+    "filter_supported_evidence",
     "retrieve_best_practices",
     "retrieve_clause_guidance",
     "retrieve_contract_guidance",

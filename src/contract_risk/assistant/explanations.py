@@ -17,6 +17,7 @@ class ClauseExplanation:
     supporting_reasoning: str
     source_titles: tuple[str, ...]
     evidence_ids: tuple[str, ...]
+    citations: tuple[str, ...]
 
     def asdict(self) -> dict[str, object]:
         """Serialize the explanation into a stable dictionary."""
@@ -34,6 +35,7 @@ def build_clause_explanation(
         lead_evidence = evidence[0]
         source_titles = tuple(item.source_title for item in evidence)
         evidence_ids = tuple(item.source_id for item in evidence)
+        citations = tuple(f"{item.source_title} ({item.source_url})" for item in evidence)
         why_risky = (
             f"{prediction.clause_id} is {prediction.severity.lower()} risk because the retrieved guidance "
             f"from {lead_evidence.source_title} says: {lead_evidence.snippet}"
@@ -45,6 +47,7 @@ def build_clause_explanation(
     else:
         source_titles = ()
         evidence_ids = ()
+        citations = ()
         why_risky = (
             f"{prediction.clause_id} is {prediction.severity.lower()} risk because the clause maps to a "
             f"{prediction.predicted_type} pattern, but retrieval did not return strong supporting guidance."
@@ -60,4 +63,5 @@ def build_clause_explanation(
         supporting_reasoning=supporting_reasoning,
         source_titles=source_titles,
         evidence_ids=evidence_ids,
+        citations=citations,
     )

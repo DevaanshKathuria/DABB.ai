@@ -7,6 +7,7 @@ from dataclasses import asdict
 from typing import Any
 
 from contract_risk.assistant.explanations import build_clause_explanation
+from contract_risk.assistant.guardrails import MIN_EVIDENCE_SCORE, STRICT_GENERATION_TEMPLATE
 from contract_risk.assistant.state import AgentState
 
 REPORT_VERSION = "2.0"
@@ -98,6 +99,11 @@ def build_structured_report(state: AgentState) -> dict[str, Any]:
         "clause_explanations": build_clause_explanations(state),
         "mitigation_actions": unique_actions,
         "disclaimer": LEGAL_DISCLAIMER,
+        "generation_controls": {
+            "min_evidence_score": MIN_EVIDENCE_SCORE,
+            "citation_policy": "cite sources when evidence is strong; refuse to speculate when evidence is weak or missing",
+            "prompt_template": STRICT_GENERATION_TEMPLATE,
+        },
         "sources_consulted": sources,
         "fallback": {
             "used": state.fallback_reason is not None,

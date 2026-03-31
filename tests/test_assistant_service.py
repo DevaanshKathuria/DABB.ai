@@ -37,6 +37,7 @@ def test_generate_report_returns_structured_sections() -> None:
     assert len(report["clause_explanations"]) == 2
     assert report["mitigation_actions"]
     assert report["disclaimer"]
+    assert report["generation_controls"]["citation_policy"]
     assert report["sources_consulted"]
 
 
