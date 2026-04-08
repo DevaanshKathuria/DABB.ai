@@ -184,6 +184,10 @@ def analyze_contract_text(
                 knowledge_base=knowledge_base,
                 contract_name=contract_name,
             )
+            fallback = report.get("fallback", {}) if report else {}
+            if fallback.get("used"):
+                reason = fallback.get("reason") or "The assistant used a fallback path."
+                warnings.append(f"Assistant fallback used: {reason}")
         except Exception as exc:  # pragma: no cover - defensive guard for assistant runtime failures
             report_error = f"Could not generate the legal assistance report: {exc}"
             warnings.append(report_error)

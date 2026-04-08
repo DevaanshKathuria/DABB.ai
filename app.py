@@ -51,9 +51,11 @@ def get_cached_knowledge_base() -> object:
     return build_knowledge_base(load_legal_guidance_corpus())
 
 
-def _render_report(report: dict[str, object] | None) -> None:
+def _render_report(report: dict[str, object] | None, report_error: str | None = None) -> None:
     """Render the structured legal assistance report in the UI."""
     st.subheader("Generate Legal Assistance Report")
+    if report_error:
+        st.warning(report_error)
     if report is None:
         st.info("Click the button above to generate a structured assistant-backed report.")
         return
@@ -199,13 +201,13 @@ def render_app() -> None:
 
     report_to_render = st.session_state.get("assistant_report")
     if report_to_render is None:
+        if st.session_state.get("assistant_report_error"):
+            st.warning(st.session_state["assistant_report_error"])
         st.info("Use the button above to generate the assistant-backed report for this contract.")
     else:
         for warning in st.session_state.get("assistant_report_warnings", ()):
             st.info(warning)
-        if st.session_state.get("assistant_report_error"):
-            st.warning(st.session_state["assistant_report_error"])
-        _render_report(report_to_render)
+        _render_report(report_to_render, st.session_state.get("assistant_report_error"))
 
         st.subheader("Clause Drill-Down")
         clause_details = build_clause_detail_index(report_to_render)

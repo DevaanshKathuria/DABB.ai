@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from contract_risk.assistant.corpus import load_legal_guidance_corpus
 from contract_risk.assistant.retrieval import build_knowledge_base
+import contract_risk.ui_support as ui_support
 from contract_risk.ui_support import (
     analyze_contract_text,
     build_clause_detail_index,
@@ -75,3 +76,45 @@ def test_resolve_selected_clause_id_defaults_to_first_available_option() -> None
     assert resolve_selected_clause_id(["C010", "C011"], "C999") == "C010"
     assert resolve_selected_clause_id(["C010", "C011"], "C011") == "C011"
     assert resolve_selected_clause_id([]) is None
+
+
+def test_analyze_contract_text_surfaces_assistant_fallback_warning(monkeypatch) -> None:
+    def _fake_report(*args, **kwargs):
+        return {
+            "contract_summary": {"contract_name": "Fallback"},
+            "severity_assessment": {"overall_risk_level": "Medium", "high_risk_count": 0, "medium_risk_count": 1, "low_risk_count": 0},
+            "identified_risks": [],
+            "clause_references": [],
+            "clause_explanations": [],
+            "sources_consulted": [],
+            "fallback": {"used": True, "reason": "retrieval was incomplete", "errors": ["partial corpus"]},
+        }
+
+    monkeypatch.setattr(ui_support, "generate_legal_assistance_report", _fake_report)
+
+    result = analyze_contract_text(
+        "Either party may terminate on written notice.",
+        _ToyModel(labels=("termination",)),
+        contract_name="Fallback Contract",
+    )
+
+    assert result.report is not None
+    assert any("fallback" in warning.lower() for warning in result.warnings)
+
+
+def test_analyze_contract_text_reports_report_generation_failure(monkeypatch) -> None:
+    def _boom(*args, **kwargs):
+        raise RuntimeError("retrieval backend offline")
+
+    monkeypatch.setattr(ui_support, "generate_legal_assistance_report", _boom)
+
+    result = analyze_contract_text(
+        "Either party may terminate on written notice.",
+        _ToyModel(labels=("termination",)),
+        contract_name="Failure Contract",
+    )
+
+    assert result.report is None
+    assert result.report_error is not None
+    assert "retrieval backend offline" in result.report_error
+    assert any("legal assistance report" in warning.lower() for warning in result.warnings)
