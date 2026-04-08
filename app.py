@@ -24,7 +24,12 @@ from contract_risk.data.ingestion import (
 from contract_risk.models.explainability import ExplainabilityError, top_features_by_class
 from contract_risk.models.inference import load_or_train_model
 from contract_risk.risk.mapping import risk_badge_color
-from contract_risk.ui_support import analyze_contract_text
+from contract_risk.ui_support import (
+    analyze_contract_text,
+    build_clause_detail_index,
+    format_clause_label,
+    resolve_selected_clause_id,
+)
 
 st.set_page_config(page_title="DABB.ai Contract Risk Analyzer", layout="wide")
 st.title("DABB.ai - Intelligent Contract Risk Analysis")
@@ -201,6 +206,64 @@ def render_app() -> None:
         if st.session_state.get("assistant_report_error"):
             st.warning(st.session_state["assistant_report_error"])
         _render_report(report_to_render)
+
+        st.subheader("Clause Drill-Down")
+        clause_details = build_clause_detail_index(report_to_render)
+        available_clause_ids = filtered_df["clause_id"].tolist()
+        selected_clause_id = resolve_selected_clause_id(
+            available_clause_ids,
+            None,
+        )
+        if selected_clause_id is None:
+            st.info("No clauses are available in the current filters.")
+        else:
+            selected_clause_id = st.selectbox(
+                "Select a clause to inspect",
+                options=available_clause_ids,
+                index=available_clause_ids.index(selected_clause_id),
+                format_func=lambda clause_id: format_clause_label(
+                    clause_details.get(
+                        clause_id,
+                        {
+                            "clause_id": clause_id,
+                            "predicted_type": filtered_df.loc[
+                                filtered_df["clause_id"] == clause_id, "predicted_type"
+                            ].iloc[0],
+                            "severity": filtered_df.loc[
+                                filtered_df["clause_id"] == clause_id, "severity"
+                            ].iloc[0],
+                        },
+                    )
+                ),
+            )
+            selected_detail = clause_details.get(selected_clause_id)
+            if selected_detail is None:
+                st.info("No drill-down data is available for the selected clause.")
+            else:
+                detail_col1, detail_col2 = st.columns(2)
+                with detail_col1:
+                    st.metric("Clause", selected_detail["clause_id"])
+                    st.metric("Type", selected_detail["predicted_type"])
+                with detail_col2:
+                    st.metric("Severity", selected_detail["severity"])
+                    st.metric("Risk Score", selected_detail["risk_score"])
+
+                st.write(selected_detail["clause_text"])
+                st.write(selected_detail["explanation"] or "No explanation was available.")
+                st.caption(selected_detail["supporting_reasoning"] or "Supporting reasoning unavailable.")
+
+                if selected_detail["evidence"]:
+                    st.markdown("**Supporting Evidence**")
+                    for evidence in selected_detail["evidence"]:
+                        st.markdown(
+                            f"- **{evidence['source_title']}** "
+                            f"({evidence['score']:.2f}): {evidence['snippet']}"
+                        )
+                else:
+                    st.info("No strong supporting evidence was available for this clause.")
+
+                if selected_detail["mitigation_action"]:
+                    st.caption(f"Mitigation guidance: {selected_detail['mitigation_action']}")
 
     st.subheader("Export Results")
     export_col1, export_col2 = st.columns(2)

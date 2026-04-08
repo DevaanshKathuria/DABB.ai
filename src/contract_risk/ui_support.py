@@ -47,6 +47,54 @@ def build_clause_frame(clauses: Sequence[str], predicted_types: Sequence[str]) -
     return pd.DataFrame(rows)
 
 
+def build_clause_detail_index(report: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    """Combine assistant report sections into per-clause drill-down records."""
+    if not report:
+        return {}
+
+    references = {item["clause_id"]: item for item in report.get("clause_references", [])}
+    explanations = {item["clause_id"]: item for item in report.get("clause_explanations", [])}
+    findings = {item["clause_id"]: item for item in report.get("identified_risks", [])}
+
+    detail_index: dict[str, dict[str, Any]] = {}
+    for clause_id, reference in references.items():
+        explanation = explanations.get(clause_id, {})
+        finding = findings.get(clause_id, {})
+        detail_index[clause_id] = {
+            "clause_id": clause_id,
+            "predicted_type": reference.get("predicted_type", finding.get("predicted_type", "unknown")),
+            "severity": reference.get("severity", finding.get("severity", "Medium")),
+            "risk_score": reference.get("risk_score", finding.get("risk_score", 50)),
+            "clause_text": reference.get("clause_text", finding.get("clause_text", "")),
+            "explanation": explanation.get("why_risky", finding.get("explanation", "")),
+            "supporting_reasoning": explanation.get("supporting_reasoning", ""),
+            "mitigation_action": finding.get("mitigation_action", ""),
+            "evidence": tuple(finding.get("evidence", ())),
+            "source_titles": tuple(explanation.get("source_titles", ())),
+            "citations": tuple(explanation.get("citations", ())),
+            "evidence_ids": tuple(explanation.get("evidence_ids", ())),
+        }
+    return detail_index
+
+
+def resolve_selected_clause_id(clause_ids: Sequence[str], preferred_clause_id: str | None = None) -> str | None:
+    """Pick a stable clause selection for long result sets and filtered views."""
+    if not clause_ids:
+        return None
+    if preferred_clause_id in clause_ids:
+        return preferred_clause_id
+    return clause_ids[0]
+
+
+def format_clause_label(clause_detail: dict[str, Any]) -> str:
+    """Create a readable clause label for Streamlit selectors."""
+    return (
+        f"{clause_detail.get('clause_id', 'Clause')} · "
+        f"{clause_detail.get('predicted_type', 'unknown')} · "
+        f"{clause_detail.get('severity', 'Medium')}"
+    )
+
+
 def analyze_contract_text(
     raw_text: str,
     model: object | None,
