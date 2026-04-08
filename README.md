@@ -1,4 +1,4 @@
-# DABB.ai: Intelligent Contract Risk Analysis (Project 7, Milestone 1)
+# DABB.ai: Intelligent Contract Risk Analysis (Project 7, Milestone 2)
 
 Team: **DABB.ai**
 
@@ -9,7 +9,7 @@ Members:
 - Bhavya Jain
 
 ## 1) Overview
-This Milestone 1 system uses **classical NLP + ML** (no GenAI/LLMs) to analyze contract clauses and flag potential risk.
+This system keeps the **Milestone 1 classical NLP + ML baseline** and layers in a structured assistant report experience for Milestone 2.
 
 Core flow:
 1. Extract text from PDF/TXT
@@ -18,6 +18,7 @@ Core flow:
 4. Classify clause type (LogReg baseline; compare with LinearSVC and DecisionTree)
 5. Map predicted type to risk severity and risk score
 6. Present results in a Streamlit UI with highlighting, filters, and export
+7. Generate a structured legal assistance report with clause drill-down, PDF export, and multi-contract risk comparison
 
 ## 2) Legal Disclaimer
 **This tool is informational only and is not legal advice.**
@@ -45,6 +46,10 @@ UI supports:
 - Risk highlighting
 - Severity/type filters
 - CSV/JSON export
+- Assistant-backed structured report
+- Clause drill-down with evidence and mitigation guidance
+- PDF export for final reports
+- Multi-contract comparison / risk trend analysis
 
 ## 4) Architecture (Milestone 1)
 ```mermaid
@@ -57,14 +62,16 @@ flowchart TD
     F --> G[Risk Mapping Table]
     G --> H[Severity + Risk Score]
     H --> I[Streamlit UI Table + Highlighted Blocks]
-    I --> J[Export CSV/JSON]
+    I --> J[Assistant Report + Clause Drill-Down]
+    J --> K[PDF Export + Multi-Contract Comparison]
+    K --> L[Export CSV/JSON]
 
-    K[Training CSV in data/raw/] --> L[Flexible Column Loader]
-    L --> M[Train TF-IDF + LogReg Pipeline]
-    M --> N[Save models/model.joblib]
-    N --> E
+    M[Training CSV in data/raw/] --> N[Flexible Column Loader]
+    N --> O[Train TF-IDF + LogReg Pipeline]
+    O --> P[Save models/model.joblib]
+    P --> E
 
-    O[Evaluation] --> P[Precision/Recall/F1 + Confusion Matrix in reports/]
+    Q[Evaluation] --> R[Precision/Recall/F1 + Confusion Matrix in reports/]
 ```
 
 ## 5) Repository Structure
@@ -130,7 +137,8 @@ Replace these with real screenshots before final submission.
 - Clause labels depend on training data quality and class balance.
 - Rule-based risk mapping is static and domain-dependent.
 - Extracted text quality from scanned/image-only PDFs may be limited.
-- This milestone does not include LLM/agentic legal reasoning (reserved for Milestone 2).
+- The assistant report is structured and grounded in the bundled guidance corpus, but it is still informational only and not legal advice.
+- Multi-contract comparison highlights repeated patterns rather than performing legal adjudication.
 
 ## 10) Quick Commands
 - `PYTHONPATH=src python -m contract_risk.cli train`

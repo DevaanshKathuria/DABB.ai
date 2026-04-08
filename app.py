@@ -15,6 +15,7 @@ if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
 from contract_risk.assistant.corpus import load_legal_guidance_corpus
+from contract_risk.assistant.comparison import build_risk_trend_summary
 from contract_risk.assistant.pdf_export import build_legal_assistance_report_pdf
 from contract_risk.assistant.retrieval import build_knowledge_base
 from contract_risk.data.ingestion import (
@@ -113,218 +114,272 @@ def render_app() -> None:
     """Render the full Streamlit application."""
     uploaded_file = st.file_uploader("Upload contract", type=["txt", "pdf"])
     use_demo_mode = st.checkbox("Use bundled demo contract", value=uploaded_file is None)
-
-    if uploaded_file is None and not use_demo_mode:
-        st.info("Upload a `.txt` or `.pdf` contract, or enable demo mode to begin.")
-        return
-
-    try:
-        if uploaded_file is not None:
-            raw_text = extract_text_from_upload(uploaded_file.name, uploaded_file.getvalue())
-            contract_name = uploaded_file.name
-        else:
-            raw_text = (ROOT / "data" / "demo" / "demo_contract.txt").read_text(encoding="utf-8")
-            contract_name = "Bundled Demo Contract"
-    except UnsupportedFileTypeError as exc:
-        st.error(str(exc))
-        return
-    except DocumentReadError as exc:
-        st.error(str(exc))
-        return
-    except FileNotFoundError:
-        st.error("Demo contract file is missing.")
-        return
-    except Exception:
-        st.error("Unexpected error while parsing the document.")
-        return
-
     model = get_cached_model()
     knowledge_base = get_cached_knowledge_base()
-    analysis = analyze_contract_text(
-        raw_text,
-        model,
-        contract_name=contract_name,
-        knowledge_base=knowledge_base,
-    )
 
-    for warning in analysis.warnings:
-        st.warning(warning)
-    for error in analysis.errors:
-        st.error(error)
-
-    if analysis.clause_frame.empty:
-        st.warning("No clause analysis is available for this document.")
-        return
-
-    results_df = analysis.clause_frame.copy()
-
-    with st.expander("Extracted Text", expanded=False):
-        st.text_area("Raw extracted text", value=analysis.raw_text, height=250)
-
-    st.subheader("Filter Results")
-    severity_options = sorted(results_df["severity"].unique().tolist())
-    type_options = sorted(results_df["predicted_type"].unique().tolist())
-
-    col1, col2 = st.columns(2)
-    with col1:
-        selected_severity = st.multiselect(
-            "Severity",
-            options=severity_options,
-            default=severity_options,
-        )
-    with col2:
-        selected_types = st.multiselect(
-            "Clause Type",
-            options=type_options,
-            default=type_options,
-        )
-
-    filtered_df = results_df[
-        results_df["severity"].isin(selected_severity)
-        & results_df["predicted_type"].isin(selected_types)
-    ].copy()
-
-    st.subheader("Clause Risk Table")
-
-    def _style_row(row: pd.Series) -> list[str]:
-        color = risk_badge_color(str(row["severity"]))
-        style = f"background-color: {color}22"
-        return [style if col in {"severity", "risk_score"} else "" for col in row.index]
-
-    styled = filtered_df.style.apply(_style_row, axis=1)
-    st.markdown(styled.to_html(index=False), unsafe_allow_html=True)
-
-    st.subheader("Generate Legal Assistance Report")
-    if st.button("Generate Legal Assistance Report", use_container_width=True):
-        st.session_state["assistant_report"] = analysis.report
-        st.session_state["assistant_report_error"] = analysis.report_error
-        st.session_state["assistant_report_warnings"] = analysis.warnings
-        st.session_state["assistant_report_pdf"] = (
-            build_legal_assistance_report_pdf(analysis.report) if analysis.report else None
-        )
-
-    report_to_render = st.session_state.get("assistant_report")
-    if report_to_render is None:
-        if st.session_state.get("assistant_report_error"):
-            st.warning(st.session_state["assistant_report_error"])
-        st.info("Use the button above to generate the assistant-backed report for this contract.")
-    else:
-        for warning in st.session_state.get("assistant_report_warnings", ()):
-            st.info(warning)
-        _render_report(report_to_render, st.session_state.get("assistant_report_error"))
-        if st.session_state.get("assistant_report_pdf"):
-            st.download_button(
-                "Download PDF Report",
-                data=st.session_state["assistant_report_pdf"],
-                file_name="legal_assistance_report.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-            )
-
-        st.subheader("Clause Drill-Down")
-        clause_details = build_clause_detail_index(report_to_render)
-        available_clause_ids = filtered_df["clause_id"].tolist()
-        selected_clause_id = resolve_selected_clause_id(
-            available_clause_ids,
-            None,
-        )
-        if selected_clause_id is None:
-            st.info("No clauses are available in the current filters.")
-        else:
-            selected_clause_id = st.selectbox(
-                "Select a clause to inspect",
-                options=available_clause_ids,
-                index=available_clause_ids.index(selected_clause_id),
-                format_func=lambda clause_id: format_clause_label(
-                    clause_details.get(
-                        clause_id,
-                        {
-                            "clause_id": clause_id,
-                            "predicted_type": filtered_df.loc[
-                                filtered_df["clause_id"] == clause_id, "predicted_type"
-                            ].iloc[0],
-                            "severity": filtered_df.loc[
-                                filtered_df["clause_id"] == clause_id, "severity"
-                            ].iloc[0],
-                        },
-                    )
-                ),
-            )
-            selected_detail = clause_details.get(selected_clause_id)
-            if selected_detail is None:
-                st.info("No drill-down data is available for the selected clause.")
-            else:
-                detail_col1, detail_col2 = st.columns(2)
-                with detail_col1:
-                    st.metric("Clause", selected_detail["clause_id"])
-                    st.metric("Type", selected_detail["predicted_type"])
-                with detail_col2:
-                    st.metric("Severity", selected_detail["severity"])
-                    st.metric("Risk Score", selected_detail["risk_score"])
-
-                st.write(selected_detail["clause_text"])
-                st.write(selected_detail["explanation"] or "No explanation was available.")
-                st.caption(selected_detail["supporting_reasoning"] or "Supporting reasoning unavailable.")
-
-                if selected_detail["evidence"]:
-                    st.markdown("**Supporting Evidence**")
-                    for evidence in selected_detail["evidence"]:
-                        st.markdown(
-                            f"- **{evidence['source_title']}** "
-                            f"({evidence['score']:.2f}): {evidence['snippet']}"
-                        )
-                else:
-                    st.info("No strong supporting evidence was available for this clause.")
-
-                if selected_detail["mitigation_action"]:
-                    st.caption(f"Mitigation guidance: {selected_detail['mitigation_action']}")
-
-    st.subheader("Export Results")
-    export_col1, export_col2 = st.columns(2)
-    with export_col1:
-        csv_bytes = filtered_df.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            "Download CSV",
-            data=csv_bytes,
-            file_name="contract_risk_results.csv",
-            mime="text/csv",
-            use_container_width=True,
-        )
-    with export_col2:
-        json_bytes = json.dumps(filtered_df.to_dict(orient="records"), indent=2).encode("utf-8")
-        st.download_button(
-            "Download JSON",
-            data=json_bytes,
-            file_name="contract_risk_results.json",
-            mime="application/json",
-            use_container_width=True,
-        )
-
-    st.subheader("Highlighted Clauses")
-    risky_df = filtered_df[filtered_df["severity"].isin(["High", "Medium"])].copy()
-    if risky_df.empty:
-        st.success("No medium/high risk clauses in the selected filters.")
-    else:
-        for _, row in risky_df.iterrows():
-            color = risk_badge_color(str(row["severity"]))
-            st.markdown(
-                f"""
-                <div style='border-left: 8px solid {color}; padding: 0.8rem; margin-bottom: 0.8rem; background: #fffaf4;'>
-                    <strong>{row['clause_id']}</strong> | <strong>{row['predicted_type']}</strong>
-                    | Severity: <strong>{row['severity']}</strong>
-                    | Risk Score: <strong>{row['risk_score']}</strong><br/>
-                    <span>{row['clause_text']}</span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-    with st.expander("Model Explainability: Top Features by Class", expanded=False):
+    if uploaded_file is not None or use_demo_mode:
         try:
-            features_df = top_features_by_class(model, top_n=8)
-            st.dataframe(features_df, use_container_width=True)
-        except ExplainabilityError as exc:
-            st.info(f"Explainability unavailable: {exc}")
+            if uploaded_file is not None:
+                raw_text = extract_text_from_upload(uploaded_file.name, uploaded_file.getvalue())
+                contract_name = uploaded_file.name
+            else:
+                raw_text = (ROOT / "data" / "demo" / "demo_contract.txt").read_text(encoding="utf-8")
+                contract_name = "Bundled Demo Contract"
+        except UnsupportedFileTypeError as exc:
+            st.error(str(exc))
+            return
+        except DocumentReadError as exc:
+            st.error(str(exc))
+            return
+        except FileNotFoundError:
+            st.error("Demo contract file is missing.")
+            return
+        except Exception:
+            st.error("Unexpected error while parsing the document.")
+            return
+
+        analysis = analyze_contract_text(
+            raw_text,
+            model,
+            contract_name=contract_name,
+            knowledge_base=knowledge_base,
+        )
+
+        for warning in analysis.warnings:
+            st.warning(warning)
+        for error in analysis.errors:
+            st.error(error)
+
+        if analysis.clause_frame.empty:
+            st.warning("No clause analysis is available for this document.")
+        else:
+            results_df = analysis.clause_frame.copy()
+
+            with st.expander("Extracted Text", expanded=False):
+                st.text_area("Raw extracted text", value=analysis.raw_text, height=250)
+
+            st.subheader("Filter Results")
+            severity_options = sorted(results_df["severity"].unique().tolist())
+            type_options = sorted(results_df["predicted_type"].unique().tolist())
+
+            col1, col2 = st.columns(2)
+            with col1:
+                selected_severity = st.multiselect(
+                    "Severity",
+                    options=severity_options,
+                    default=severity_options,
+                )
+            with col2:
+                selected_types = st.multiselect(
+                    "Clause Type",
+                    options=type_options,
+                    default=type_options,
+                )
+
+            filtered_df = results_df[
+                results_df["severity"].isin(selected_severity)
+                & results_df["predicted_type"].isin(selected_types)
+            ].copy()
+
+            st.subheader("Clause Risk Table")
+
+            def _style_row(row: pd.Series) -> list[str]:
+                color = risk_badge_color(str(row["severity"]))
+                style = f"background-color: {color}22"
+                return [style if col in {"severity", "risk_score"} else "" for col in row.index]
+
+            styled = filtered_df.style.apply(_style_row, axis=1)
+            st.markdown(styled.to_html(index=False), unsafe_allow_html=True)
+
+            st.subheader("Generate Legal Assistance Report")
+            if st.button("Generate Legal Assistance Report", use_container_width=True):
+                st.session_state["assistant_report"] = analysis.report
+                st.session_state["assistant_report_error"] = analysis.report_error
+                st.session_state["assistant_report_warnings"] = analysis.warnings
+                st.session_state["assistant_report_pdf"] = (
+                    build_legal_assistance_report_pdf(analysis.report) if analysis.report else None
+                )
+
+            report_to_render = st.session_state.get("assistant_report")
+            if report_to_render is None:
+                if st.session_state.get("assistant_report_error"):
+                    st.warning(st.session_state["assistant_report_error"])
+                st.info("Use the button above to generate the assistant-backed report for this contract.")
+            else:
+                for warning in st.session_state.get("assistant_report_warnings", ()):
+                    st.info(warning)
+                _render_report(report_to_render, st.session_state.get("assistant_report_error"))
+                if st.session_state.get("assistant_report_pdf"):
+                    st.download_button(
+                        "Download PDF Report",
+                        data=st.session_state["assistant_report_pdf"],
+                        file_name="legal_assistance_report.pdf",
+                        mime="application/pdf",
+                        use_container_width=True,
+                    )
+
+                st.subheader("Clause Drill-Down")
+                clause_details = build_clause_detail_index(report_to_render)
+                available_clause_ids = filtered_df["clause_id"].tolist()
+                selected_clause_id = resolve_selected_clause_id(
+                    available_clause_ids,
+                    None,
+                )
+                if selected_clause_id is None:
+                    st.info("No clauses are available in the current filters.")
+                else:
+                    selected_clause_id = st.selectbox(
+                        "Select a clause to inspect",
+                        options=available_clause_ids,
+                        index=available_clause_ids.index(selected_clause_id),
+                        format_func=lambda clause_id: format_clause_label(
+                            clause_details.get(
+                                clause_id,
+                                {
+                                    "clause_id": clause_id,
+                                    "predicted_type": filtered_df.loc[
+                                        filtered_df["clause_id"] == clause_id, "predicted_type"
+                                    ].iloc[0],
+                                    "severity": filtered_df.loc[
+                                        filtered_df["clause_id"] == clause_id, "severity"
+                                    ].iloc[0],
+                                },
+                            )
+                        ),
+                    )
+                    selected_detail = clause_details.get(selected_clause_id)
+                    if selected_detail is None:
+                        st.info("No drill-down data is available for the selected clause.")
+                    else:
+                        detail_col1, detail_col2 = st.columns(2)
+                        with detail_col1:
+                            st.metric("Clause", selected_detail["clause_id"])
+                            st.metric("Type", selected_detail["predicted_type"])
+                        with detail_col2:
+                            st.metric("Severity", selected_detail["severity"])
+                            st.metric("Risk Score", selected_detail["risk_score"])
+
+                        st.write(selected_detail["clause_text"])
+                        st.write(selected_detail["explanation"] or "No explanation was available.")
+                        st.caption(selected_detail["supporting_reasoning"] or "Supporting reasoning unavailable.")
+
+                        if selected_detail["evidence"]:
+                            st.markdown("**Supporting Evidence**")
+                            for evidence in selected_detail["evidence"]:
+                                st.markdown(
+                                    f"- **{evidence['source_title']}** "
+                                    f"({evidence['score']:.2f}): {evidence['snippet']}"
+                                )
+                        else:
+                            st.info("No strong supporting evidence was available for this clause.")
+
+                        if selected_detail["mitigation_action"]:
+                            st.caption(f"Mitigation guidance: {selected_detail['mitigation_action']}")
+
+            st.subheader("Export Results")
+            export_col1, export_col2 = st.columns(2)
+            with export_col1:
+                csv_bytes = filtered_df.to_csv(index=False).encode("utf-8")
+                st.download_button(
+                    "Download CSV",
+                    data=csv_bytes,
+                    file_name="contract_risk_results.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                )
+            with export_col2:
+                json_bytes = json.dumps(filtered_df.to_dict(orient="records"), indent=2).encode("utf-8")
+                st.download_button(
+                    "Download JSON",
+                    data=json_bytes,
+                    file_name="contract_risk_results.json",
+                    mime="application/json",
+                    use_container_width=True,
+                )
+
+            st.subheader("Highlighted Clauses")
+            risky_df = filtered_df[filtered_df["severity"].isin(["High", "Medium"])].copy()
+            if risky_df.empty:
+                st.success("No medium/high risk clauses in the selected filters.")
+            else:
+                for _, row in risky_df.iterrows():
+                    color = risk_badge_color(str(row["severity"]))
+                    st.markdown(
+                        f"""
+                        <div style='border-left: 8px solid {color}; padding: 0.8rem; margin-bottom: 0.8rem; background: #fffaf4;'>
+                            <strong>{row['clause_id']}</strong> | <strong>{row['predicted_type']}</strong>
+                            | Severity: <strong>{row['severity']}</strong>
+                            | Risk Score: <strong>{row['risk_score']}</strong><br/>
+                            <span>{row['clause_text']}</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+            with st.expander("Model Explainability: Top Features by Class", expanded=False):
+                try:
+                    features_df = top_features_by_class(model, top_n=8)
+                    st.dataframe(features_df, use_container_width=True)
+                except ExplainabilityError as exc:
+                    st.info(f"Explainability unavailable: {exc}")
+
+    st.subheader("Multi-Contract Comparison")
+    comparison_uploads = st.file_uploader(
+        "Compare multiple contracts",
+        type=["txt", "pdf"],
+        accept_multiple_files=True,
+        key="comparison_uploads",
+    )
+    if comparison_uploads:
+        comparison_analyses = []
+        for comparison_file in comparison_uploads:
+            try:
+                comparison_text = extract_text_from_upload(
+                    comparison_file.name,
+                    comparison_file.getvalue(),
+                )
+            except (UnsupportedFileTypeError, DocumentReadError) as exc:
+                st.warning(f"{comparison_file.name}: {exc}")
+                continue
+            except Exception:
+                st.warning(f"{comparison_file.name}: unexpected parsing error.")
+                continue
+
+            comparison_analysis = analyze_contract_text(
+                comparison_text,
+                model,
+                contract_name=comparison_file.name,
+                knowledge_base=knowledge_base,
+            )
+            comparison_analyses.append(comparison_analysis)
+
+        if len(comparison_analyses) < 2:
+            st.info("Upload at least two readable contracts to compare risk patterns.")
+        else:
+            comparison = build_risk_trend_summary(comparison_analyses)
+            comparison_col1, comparison_col2, comparison_col3 = st.columns(3)
+            with comparison_col1:
+                st.metric("Contracts Compared", comparison["contract_count"])
+            with comparison_col2:
+                st.metric("Repeated Patterns", len(comparison["repeated_risk_patterns"]))
+            with comparison_col3:
+                st.metric("High-Risk Findings", comparison["severity_totals"].get("High", 0))
+
+            st.caption(
+                f"Medium-risk findings: {comparison['severity_totals'].get('Medium', 0)} | "
+                f"Low-risk findings: {comparison['severity_totals'].get('Low', 0)}"
+            )
+
+            st.markdown("**Contract Summary**")
+            st.dataframe(pd.DataFrame(comparison["per_contract"]), use_container_width=True)
+
+            st.markdown("**Repeated Risk Patterns**")
+            if comparison["repeated_risk_patterns"]:
+                st.dataframe(pd.DataFrame(comparison["repeated_risk_patterns"]), use_container_width=True)
+            else:
+                st.info("No repeated risk patterns were shared across the selected contracts.")
+    else:
+        st.info("Upload at least two readable contracts to compare risk patterns.")
 
 
 if __name__ == "__main__":
