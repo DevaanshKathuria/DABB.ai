@@ -15,6 +15,7 @@ if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
 from contract_risk.assistant.corpus import load_legal_guidance_corpus
+from contract_risk.assistant.pdf_export import build_legal_assistance_report_pdf
 from contract_risk.assistant.retrieval import build_knowledge_base
 from contract_risk.data.ingestion import (
     DocumentReadError,
@@ -198,6 +199,9 @@ def render_app() -> None:
         st.session_state["assistant_report"] = analysis.report
         st.session_state["assistant_report_error"] = analysis.report_error
         st.session_state["assistant_report_warnings"] = analysis.warnings
+        st.session_state["assistant_report_pdf"] = (
+            build_legal_assistance_report_pdf(analysis.report) if analysis.report else None
+        )
 
     report_to_render = st.session_state.get("assistant_report")
     if report_to_render is None:
@@ -208,6 +212,14 @@ def render_app() -> None:
         for warning in st.session_state.get("assistant_report_warnings", ()):
             st.info(warning)
         _render_report(report_to_render, st.session_state.get("assistant_report_error"))
+        if st.session_state.get("assistant_report_pdf"):
+            st.download_button(
+                "Download PDF Report",
+                data=st.session_state["assistant_report_pdf"],
+                file_name="legal_assistance_report.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
 
         st.subheader("Clause Drill-Down")
         clause_details = build_clause_detail_index(report_to_render)
