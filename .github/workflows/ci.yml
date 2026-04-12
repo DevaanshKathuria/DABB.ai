@@ -21,6 +21,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Compile sources
+        run: python -m compileall app.py streamlit_app.py src tests
+
+      - name: Run smoke tests
+        env:
+          PYTHONPATH: src
+        run: pytest -q tests/test_release_smoke.py
+
       - name: Run tests
         env:
           PYTHONPATH: src
