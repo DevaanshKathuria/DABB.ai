@@ -1,4 +1,4 @@
-# DABB.ai: Intelligent Contract Risk Analysis (Project 7, Milestone 2)
+# DABB.ai: Intelligent Contract Risk Analysis
 
 Team: **DABB.ai**
 
@@ -9,89 +9,67 @@ Members:
 - Bhavya Jain
 
 ## 1) Overview
-This system keeps the **Milestone 1 classical NLP + ML baseline** and layers in a structured assistant report experience for Milestone 2.
+DABB.ai is a contract risk analysis system that combines a classical clause classifier with a grounded assistant layer for structured legal-style reporting.
 
-Core flow:
-1. Extract text from PDF/TXT
-2. Preprocess and segment into clauses
-3. Transform clauses with TF-IDF
-4. Classify clause type (LogReg baseline; compare with LinearSVC and DecisionTree)
-5. Map predicted type to risk severity and risk score
-6. Present results in a Streamlit UI with highlighting, filters, and export
-7. Generate a structured legal assistance report with clause drill-down, PDF export, and multi-contract risk comparison
+Milestone 2 keeps the Milestone 1 machine-learning baseline intact and extends it with:
+- Clause-level assistant explanations backed by a local guidance corpus
+- PDF report export for submission and demo use
+- Multi-contract comparison for spotting repeated risk patterns
+- Deployment-ready Streamlit entrypoints for public hosting
 
-## 2) Legal Disclaimer
-**This tool is informational only and is not legal advice.**
-Consult a qualified legal professional before making legal decisions.
+## 2) What the App Does
+The application accepts PDF or TXT contracts and returns:
+- Clause segmentation and clause IDs
+- Predicted clause type
+- Risk severity: `Low`, `Medium`, or `High`
+- Risk score from `0` to `100`
+- Highlighted high-risk clauses
+- CSV and JSON exports
+- Structured legal assistance report
+- Optional PDF report download
+- Multi-contract comparison summary
 
-## 3) Input and Output Specification
-### Input
-- Contract file formats: `.pdf`, `.txt`
-- Optional training CSV in `data/raw/`
+## 3) Legal Disclaimer
+This tool is informational only and is not legal advice.
+Always consult a qualified legal professional before making legal decisions.
 
-### Expected training CSV schema (flexible)
-The loader accepts the first matching column from each list:
-- Text column candidates: `text`, `clause`, `sentence`, `content`
-- Label column candidates: `label`, `category`, `clause_type`, `type`
-
-### Output
-For each clause:
-- `clause_id`
-- `clause_text`
-- `predicted_type`
-- `severity` (`Low`, `Medium`, `High`)
-- `risk_score` (0-100)
-
-UI supports:
-- Risk highlighting
-- Severity/type filters
-- CSV/JSON export
-- Assistant-backed structured report
-- Clause drill-down with evidence and mitigation guidance
-- PDF export for final reports
-- Multi-contract comparison / risk trend analysis
-
-## 4) Architecture (Milestone 1)
+## 4) Architecture
 ```mermaid
 flowchart TD
     A[Upload PDF/TXT] --> B[Text Extraction]
     B --> C[Preprocess + Clause Segmentation]
     C --> D[TF-IDF Vectorization]
-    D --> E[Classifier: Logistic Regression]
-    E --> F[Predicted Clause Type]
-    F --> G[Risk Mapping Table]
-    G --> H[Severity + Risk Score]
-    H --> I[Streamlit UI Table + Highlighted Blocks]
-    I --> J[Assistant Report + Clause Drill-Down]
-    J --> K[PDF Export + Multi-Contract Comparison]
-    K --> L[Export CSV/JSON]
+    D --> E[Clause Classifier]
+    E --> F[Risk Mapping Table]
+    F --> G[Severity + Risk Score]
+    G --> H[Streamlit UI]
+    H --> I[Assistant Report + Clause Drill-down]
+    I --> J[PDF Export + Multi-Contract Comparison]
+    J --> K[CSV / JSON Export]
 
-    M[Training CSV in data/raw/] --> N[Flexible Column Loader]
-    N --> O[Train TF-IDF + LogReg Pipeline]
-    O --> P[Save models/model.joblib]
+    L[Bundled Legal Guidance Corpus] --> M[Local Retrieval Index]
+    M --> I
+
+    N[Training CSV] --> O[Train / Refresh Model]
+    O --> P[models/model.joblib]
     P --> E
-
-    Q[Evaluation] --> R[Precision/Recall/F1 + Confusion Matrix in reports/]
 ```
 
-## 5) Repository Structure
+## 5) Project Layout
 ```text
-aimlproject/
+DABB.ai/
 ├── app.py
+├── streamlit_app.py
 ├── data/
-│   ├── raw/
-│   └── demo/
+├── docs/
 ├── models/
-│   └── model.joblib
 ├── reports/
-│   ├── milestone1_report/
-│   └── screenshots/
 ├── scripts/
 ├── src/contract_risk/
 └── tests/
 ```
 
-## 6) Setup and Run
+## 6) Local Setup
 ### Prerequisites
 - Python 3.10+
 
@@ -102,46 +80,77 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Train model
+### Run the app
+```bash
+streamlit run streamlit_app.py
+```
+
+`streamlit_app.py` is the recommended hosted entrypoint. `app.py` remains the reusable application module for local development and tests.
+
+### Train or refresh the model
 ```bash
 PYTHONPATH=src python -m contract_risk.cli train --csv data/raw/legal_docs_modified.csv
 ```
 
-If `data/raw/legal_docs_modified.csv` is missing, fallback sample data in `data/demo/sample_training.csv` is used.
+If `data/raw/legal_docs_modified.csv` is unavailable, the app falls back to `data/demo/sample_training.csv`.
 
-### Evaluate model
+### Evaluate locally
 ```bash
 PYTHONPATH=src python -m contract_risk.cli eval --csv data/raw/legal_docs_modified.csv --reports-dir reports
 ```
 
-### Run UI
+## 7) Usage Flow
+1. Upload a PDF or TXT contract, or enable the bundled demo contract.
+2. Review the clause table, severity filters, and highlighted sections.
+3. Generate the legal assistance report for clause explanations and mitigation guidance.
+4. Export CSV, JSON, or PDF artifacts as needed.
+5. Upload multiple contracts to compare repeated risk patterns.
+
+## 8) Hosted Deployment
+### Streamlit Community Cloud
+1. Create a new app and point the main file at `streamlit_app.py`.
+2. Keep `requirements.txt` at the repository root.
+3. Use the default public deployment settings from `.streamlit/config.toml`.
+
+### Hugging Face Spaces
+1. Create a new Space with the `Streamlit` SDK.
+2. Set the app entrypoint to `streamlit_app.py`.
+3. Push this repository and allow the Space to install dependencies from `requirements.txt`.
+
+### Render
+1. Use the included `render.yaml` or `Procfile`.
+2. Deploy the repository as a Python web service.
+3. Start the app with `streamlit run streamlit_app.py`.
+
+### Environment overrides
+The app supports the following optional environment variables:
+- `DABB_MODEL_PATH`
+- `DABB_REPORTS_DIR`
+- `DABB_TRAINING_CSV`
+- `DABB_FALLBACK_TRAINING_CSV`
+
+## 9) Testing
 ```bash
-streamlit run app.py
+python3 -m compileall app.py streamlit_app.py src tests
+python3 -m pytest -q
 ```
 
-## 7) Deploy (Hugging Face Spaces - Streamlit)
-1. Create a new Hugging Face Space with **SDK: Streamlit**.
-2. Push this repository files to the Space.
-3. Ensure `requirements.txt` is present at repo root.
-4. Default app entrypoint should be `app.py`.
-5. Space builds and serves the app publicly.
+The repository also includes GitHub Actions CI under `.github/workflows/ci.yml`.
 
-## 8) Screenshots (Placeholders)
-Replace these with real screenshots before final submission.
+## 10) Limitations
+- Clause labels still depend on training data quality and class balance.
+- Risk scores are rule-based and should be treated as screening guidance.
+- Scanned or image-only PDFs may not extract clean text.
+- The assistant report is grounded in the bundled corpus, but it is still informational only.
+- Multi-contract comparison surfaces repeated patterns rather than making legal judgments.
 
-![Upload and Analysis](reports/screenshots/upload_and_analysis_placeholder.png)
-![Highlighted Risks](reports/screenshots/highlighted_risks_placeholder.png)
-![Filters and Export](reports/screenshots/filters_export_placeholder.png)
+## 11) Submission Notes
+- `reports/` contains the milestone report artifacts and presentation material.
+- `docs/deployment.md` documents the public-host startup path and smoke checks.
+- `streamlit_app.py` is the submission-ready public entrypoint.
 
-## 9) Limitations
-- Clause labels depend on training data quality and class balance.
-- Rule-based risk mapping is static and domain-dependent.
-- Extracted text quality from scanned/image-only PDFs may be limited.
-- The assistant report is structured and grounded in the bundled guidance corpus, but it is still informational only and not legal advice.
-- Multi-contract comparison highlights repeated patterns rather than performing legal adjudication.
-
-## 10) Quick Commands
+## 12) Quick Commands
 - `PYTHONPATH=src python -m contract_risk.cli train`
 - `PYTHONPATH=src python -m contract_risk.cli eval`
-- `streamlit run app.py`
-- `.venv/bin/pytest -q`
+- `streamlit run streamlit_app.py`
+- `python3 -m pytest -q`
