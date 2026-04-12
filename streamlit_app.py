@@ -3,4 +3,10 @@
 from app import render_app
 
 
-render_app()
+def main() -> None:
+    """Launch the Streamlit app."""
+    render_app()
+
+
+if __name__ == "__main__":
+    main()
