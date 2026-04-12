@@ -21,7 +21,11 @@ def load_or_train_model(model_path: str | Path | None = None) -> object:
     csv_path = config.default_train_csv if config.default_train_csv.exists() else config.fallback_train_csv
     dataset = load_training_dataframe(csv_path)
     model = train_logreg_model(dataset["text"].tolist(), dataset["label"].tolist())
-    save_model(model, resolved_model_path)
+    try:
+        save_model(model, resolved_model_path)
+    except OSError:
+        # Hosted deployments may allow execution but not persistent writes.
+        pass
     return model
 
 

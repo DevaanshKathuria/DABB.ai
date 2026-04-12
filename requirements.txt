@@ -6,3 +6,4 @@ pypdf==6.7.2
 matplotlib==3.10.8
 seaborn==0.13.2
 pytest==9.0.2
+python-dotenv==1.1.1
