@@ -26,10 +26,10 @@ jobs:
 
       - name: Run smoke tests
         env:
-          PYTHONPATH: src
+          PYTHONPATH: src:.
         run: pytest -q tests/test_release_smoke.py
 
       - name: Run tests
         env:
-          PYTHONPATH: src
+          PYTHONPATH: src:.
         run: pytest -q
