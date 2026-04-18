@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const artifactToolPath = process.env.ARTIFACT_TOOL_PATH
   ?? "/Users/abheydua2025/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool/dist/artifact_tool.mjs";
 
-const { Presentation } = await import(pathToFileURL(artifactToolPath).href);
+const { Presentation, PresentationFile } = await import(pathToFileURL(artifactToolPath).href);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,6 +20,7 @@ const metrics = (await readCsv(path.join(rootDir, "reports", "logreg_summary_met
 const confusionMatrixPath = path.join(rootDir, "reports", "logreg_confusion_matrix.png");
 const reportConfusionMatrixPath = path.join(reportFigureDir, "logreg_confusion_matrix.png");
 await fs.copyFile(confusionMatrixPath, reportConfusionMatrixPath);
+const confusionMatrixBlob = await readImageBlob(reportConfusionMatrixPath);
 
 const colors = {
   navy: "#081423",
@@ -138,6 +139,11 @@ function readCsv(filePath) {
       return Object.fromEntries(headers.map((header, idx) => [header, values[idx]]));
     });
   });
+}
+
+async function readImageBlob(imagePath) {
+  const bytes = await fs.readFile(imagePath);
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 }
 
 // Slide 1: Title
@@ -422,7 +428,8 @@ function readCsv(filePath) {
 
   addShape(slide, { x: 70, y: 350, w: 610, h: 290, fill: colors.white, line: colors.border, radius: "roundRect" });
   const image = slide.images.add({
-    path: reportConfusionMatrixPath,
+    blob: confusionMatrixBlob,
+    alt: "Logistic regression confusion matrix",
   });
   image.position = { left: 92, top: 372, width: 566, height: 246 };
   void image;
@@ -522,11 +529,218 @@ function readCsv(filePath) {
   slide.speakerNotes.setText("Use this as the clean closing slide. The takeaway is simple: the app is stable, documented, and demoable.");
 }
 
+// Slide 8: Assistant report anatomy
+{
+  const slide = deck.slides.add();
+  addBackground(slide, colors.paper);
+  addTitleBlock(slide, "Assistant report anatomy", "The report is structured so a reviewer can trace each finding from summary to evidence.", 8);
+
+  addCard(slide, {
+    x: 70,
+    y: 185,
+    w: 260,
+    h: 390,
+    title: "1. Summary",
+    body: "The contract summary frames overall risk, counts of high/medium/low findings, and the fallback indicator.",
+    accent: colors.teal,
+    fill: colors.white,
+  });
+  addCard(slide, {
+    x: 360,
+    y: 185,
+    w: 260,
+    h: 390,
+    title: "2. Findings",
+    body: "Each clause gets a predicted type, severity, score, explanation, and mitigation note.",
+    accent: colors.gold,
+    fill: colors.white,
+  });
+  addCard(slide, {
+    x: 650,
+    y: 185,
+    w: 260,
+    h: 390,
+    title: "3. Evidence",
+    body: "Retrieved passages are attached only when the support threshold is met, which keeps the report grounded.",
+    accent: colors.navy2,
+    fill: colors.white,
+  });
+  addCard(slide, {
+    x: 940,
+    y: 185,
+    w: 270,
+    h: 390,
+    title: "4. Export",
+    body: "The report is visible in the UI and also saved as a downloadable PDF for submission.",
+    accent: colors.teal,
+    fill: colors.white,
+  });
+  addPill(slide, { x: 116, y: 610, w: 170, text: "summary section", fill: colors.tealSoft });
+  addPill(slide, { x: 407, y: 610, w: 140, text: "risk findings", fill: colors.goldSoft });
+  addPill(slide, { x: 693, y: 610, w: 130, text: "evidence", fill: "#e8effb" });
+  addPill(slide, { x: 1006, y: 610, w: 148, text: "PDF export", fill: colors.greenSoft });
+  slide.speakerNotes.setText("Use this slide to walk the grader through the report sections from top to bottom.");
+}
+
+// Slide 9: Comparison and validation
+{
+  const slide = deck.slides.add();
+  addBackground(slide, colors.paper);
+  addTitleBlock(slide, "Comparison and validation", "The release includes a small but complete validation story for the assistant and the host path.", 9);
+
+  addCard(slide, {
+    x: 70,
+    y: 190,
+    w: 360,
+    h: 340,
+    title: "Multi-contract comparison",
+    body: "The app compares multiple contracts and highlights repeated risk patterns rather than treating each file in isolation.",
+    accent: colors.teal,
+    fill: colors.white,
+  });
+  addBulletList(slide, {
+    x: 110,
+    y: 285,
+    w: 280,
+    items: [
+      "Shared risk pattern counts",
+      "Per-contract summary table",
+      "High-risk finding totals",
+    ],
+  });
+
+  addCard(slide, {
+    x: 465,
+    y: 190,
+    w: 360,
+    h: 340,
+    title: "Smoke validation",
+    body: "The final smoke test checks entrypoint imports, environment overrides, and cache-write fallback behavior.",
+    accent: colors.gold,
+    fill: colors.white,
+  });
+  addBulletList(slide, {
+    x: 505,
+    y: 285,
+    w: 280,
+    items: [
+      "Import the hosted entrypoints",
+      "Resolve config overrides",
+      "Continue when save fails",
+    ],
+  });
+
+  addCard(slide, {
+    x: 860,
+    y: 190,
+    w: 350,
+    h: 340,
+    title: "Host checks",
+    body: "Deployment settings are documented for Streamlit Cloud, Hugging Face Spaces, and Render, with a single startup path.",
+    accent: colors.navy2,
+    fill: colors.white,
+  });
+  addBulletList(slide, {
+    x: 900,
+    y: 285,
+    w: 260,
+    items: [
+      "streamlit_app.py",
+      ".streamlit/config.toml",
+      "Procfile / render.yaml",
+    ],
+  });
+  addMetricCard(slide, { x: 90, y: 570, w: 235, h: 100, value: "46", label: "unit tests passing", fill: colors.tealSoft });
+  addMetricCard(slide, { x: 350, y: 570, w: 235, h: 100, value: "3", label: "smoke checks", fill: colors.goldSoft });
+  addMetricCard(slide, { x: 610, y: 570, w: 235, h: 100, value: "10", label: "slides in final deck", fill: "#e8effb" });
+  addMetricCard(slide, { x: 870, y: 570, w: 235, h: 100, value: "1", label: "public entrypoint", fill: colors.greenSoft });
+  slide.speakerNotes.setText("Tie the validation story to the actual artifacts and explain that the smoke tests protect the release path.");
+}
+
+// Slide 10: Closing
+{
+  const slide = deck.slides.add();
+  addBackground(slide, colors.navy);
+  const leftBand = slide.shapes.add({ geometry: "rect", position: { left: 0, top: 0, width: 180, height: 720 } });
+  leftBand.fill.color = colors.navy2;
+  leftBand.line.visible = false;
+  const glow = slide.shapes.add({ geometry: "ellipse", position: { left: 820, top: 420, width: 430, height: 430 } });
+  glow.fill.color = colors.gold;
+  glow.line.visible = false;
+  glow.fill.color = "#f0b35d2e";
+
+  addText(slide, {
+    x: 90,
+    y: 110,
+    w: 740,
+    h: 120,
+    text: "DABB.ai\nReady for final submission",
+    size: 38,
+    color: colors.white,
+    bold: true,
+    fill: colors.navy,
+  });
+  addText(slide, {
+    x: 92,
+    y: 260,
+    w: 720,
+    h: 80,
+    text: "Milestone 2 keeps the baseline model intact, adds grounded reporting, and ships with a valid 10-slide presentation artifact.",
+    size: 20,
+    color: "#dce7f5",
+    fill: colors.navy,
+  });
+  addCard(slide, {
+    x: 90,
+    y: 390,
+    w: 320,
+    h: 170,
+    title: "What is ready",
+    body: "Public-host startup, reproducible tests, Milestone 2 README, report, and a working PPTX deck.",
+    accent: colors.teal,
+    fill: "#0f2238",
+    titleColor: colors.white,
+  });
+  addCard(slide, {
+    x: 430,
+    y: 390,
+    w: 320,
+    h: 170,
+    title: "What to demo",
+    body: "Upload a contract, generate the report, inspect evidence, and download the results.",
+    accent: colors.gold,
+    fill: "#0f2238",
+    titleColor: colors.white,
+  });
+  addCard(slide, {
+    x: 770,
+    y: 390,
+    w: 360,
+    h: 170,
+    title: "What the grader sees",
+    body: "A stable repo with a clear deployment path and a clean deck they can open immediately.",
+    accent: colors.navy2,
+    fill: "#0f2238",
+    titleColor: colors.white,
+  });
+  slide.speakerNotes.setText("End on a confident release note: the deck opens, the app runs, and the repo is ready for grading.");
+}
+
 const previewSlide = deck.slides.items[0];
 const previewBlob = await previewSlide.export({ format: "png" });
 await fs.writeFile(path.join(previewDir, "slide-01.png"), Buffer.from(await previewBlob.arrayBuffer()));
 
-const pptxBlob = await deck.export({ format: "pptx" });
-await fs.writeFile(path.join(outputDir, "output.pptx"), Buffer.from(await pptxBlob.arrayBuffer()));
+const pptxBlob = await PresentationFile.exportPptx(deck);
+const pptxPath = path.join(outputDir, "output.pptx");
+await pptxBlob.save(pptxPath);
+for (let i = 0; i < 10; i += 1) {
+  try {
+    await fs.access(pptxPath);
+    break;
+  } catch {
+    if (i === 9) throw new Error(`Failed to write PPTX output to ${pptxPath}`);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
 
-console.log(`Wrote deck to ${path.join(outputDir, "output.pptx")}`);
+console.log(`Wrote deck to ${pptxPath}`);

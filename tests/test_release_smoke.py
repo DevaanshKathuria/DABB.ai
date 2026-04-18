@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import zipfile
+import xml.etree.ElementTree as ET
 
 import pandas as pd
 
@@ -53,3 +55,19 @@ def test_load_or_train_model_continues_if_cache_write_fails(monkeypatch, tmp_pat
     model = load_or_train_model(model_path=tmp_path / "cached-model.joblib")
 
     assert isinstance(model, DummyModel)
+
+
+def test_milestone_two_pptx_artifact_is_valid() -> None:
+    """The committed presentation should be a real 10-slide PowerPoint file."""
+    pptx_path = Path("reports/milestone2_presentation/output.pptx")
+    assert pptx_path.exists(), "Expected the final deck artifact to be checked in"
+    assert zipfile.is_zipfile(pptx_path), "The deck artifact must be a valid PPTX archive"
+
+    with zipfile.ZipFile(pptx_path) as archive:
+        presentation_xml = archive.read("ppt/presentation.xml")
+
+    root = ET.fromstring(presentation_xml)
+    ns = {"p": "http://schemas.openxmlformats.org/presentationml/2006/main"}
+    slide_ids = root.findall(".//p:sldIdLst/p:sldId", ns)
+
+    assert len(slide_ids) == 10
