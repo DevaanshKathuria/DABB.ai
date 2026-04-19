@@ -306,7 +306,7 @@ def render_app() -> None:
                     color = risk_badge_color(str(row["severity"]))
                     st.markdown(
                         f"""
-                        <div style='border-left: 8px solid {color}; padding: 0.8rem; margin-bottom: 0.8rem; background: #fffaf4;'>
+                        <div style='border-left: 8px solid {color}; padding: 0.8rem; margin-bottom: 0.8rem; background: #fffaf4; color: #111827;'>
                             <strong>{row['clause_id']}</strong> | <strong>{row['predicted_type']}</strong>
                             | Severity: <strong>{row['severity']}</strong>
                             | Risk Score: <strong>{row['risk_score']}</strong><br/>
